@@ -1,7 +1,17 @@
 from fastapi import FastAPI
 from sqlalchemy import text
 
-from app.core.database import engine
+from app.core.database import Base, engine
+from app.models import (
+    Booking,
+    BookingHistory,
+    ClassModel,
+    ClassSession,
+    Instructor,
+    Member,
+    Room,
+    User,
+)
 
 app = FastAPI(
     title="BUSY Class Booking API",
