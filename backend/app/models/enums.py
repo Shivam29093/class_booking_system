@@ -7,10 +7,11 @@ class UserRole(str, Enum):
 
 
 class BookingStatus(str, Enum):
-    CONFIRMED = "CONFIRMED"
+    BOOKED = "BOOKED"
     WAITLISTED = "WAITLISTED"
     CANCELLED = "CANCELLED"
-
+    ATTENDED = "ATTENDED"
+    NO_SHOW = "NO_SHOW"
 
 class BookingEventType(str, Enum):
     CREATED = "CREATED"

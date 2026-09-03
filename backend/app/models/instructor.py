@@ -31,7 +31,9 @@ class Instructor(Base):
     user: Mapped["User"] = relationship(
         back_populates="instructor",
     )
-
+    @property
+    def email(self) -> str:
+        return self.user.email
     primary_sessions: Mapped[list["ClassSession"]] = relationship(
         back_populates="primary_instructor",
         foreign_keys="ClassSession.primary_instructor_id",

@@ -4,6 +4,10 @@ from app.api.auth import router as auth_router
 from app.core.database import Base, engine
 from app.api.classes import router as classes_router
 from app.api.members import router as members_router
+from app.api.rooms import router as rooms_router
+from app.api.instructors import router as instructors_router
+from app.api.sessions import router as sessions_router
+from app.api.bookings import router as bookings_router
 from app.models import (
     Booking,
     BookingHistory,
@@ -24,6 +28,10 @@ app = FastAPI(
 app.include_router(auth_router)
 app.include_router(classes_router)
 app.include_router(members_router)
+app.include_router(rooms_router)
+app.include_router(instructors_router)
+app.include_router(sessions_router)
+app.include_router(bookings_router)
 
 @app.get("/health")
 def health_check():
