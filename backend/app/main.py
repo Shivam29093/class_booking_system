@@ -3,7 +3,7 @@ from sqlalchemy import text
 from app.api.auth import router as auth_router
 from app.core.database import Base, engine
 from app.api.classes import router as classes_router
-
+from app.api.members import router as members_router
 from app.models import (
     Booking,
     BookingHistory,
@@ -23,6 +23,7 @@ app = FastAPI(
 
 app.include_router(auth_router)
 app.include_router(classes_router)
+app.include_router(members_router)
 
 @app.get("/health")
 def health_check():
