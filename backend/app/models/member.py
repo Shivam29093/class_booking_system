@@ -23,9 +23,10 @@ class Member(Base):
     )
 
     email: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        index=True,
+    String(255),
+    nullable=False,
+    unique=True,
+    index=True,
     )
 
     membership_expiry: Mapped[date] = mapped_column(

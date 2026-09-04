@@ -8,7 +8,7 @@ from app.models.booking_history import BookingHistory
 from app.models.enums import BookingEventType, BookingStatus
 from app.models.member import Member
 from app.models.session import ClassSession
-
+from datetime import date, datetime, timedelta
 
 def add_history(
     db: Session,
@@ -72,7 +72,9 @@ def create_booking(
             detail="Member membership has expired",
         )
 
-    # A member can have only one booking per session.
+    # A member can have only one booking record per session.
+    # We check ALL statuses because the database has a unique
+    # constraint on (session_id, member_id).
     existing_booking = (
         db.query(Booking)
         .filter(
@@ -82,7 +84,11 @@ def create_booking(
         .first()
     )
 
-    if existing_booking:
+    # Already booked or waitlisted.
+    if existing_booking and existing_booking.status in (
+        BookingStatus.BOOKED,
+        BookingStatus.WAITLISTED,
+    ):
         raise HTTPException(
             status_code=409,
             detail="Member already has a booking for this session",
@@ -115,6 +121,31 @@ def create_booking(
     else:
         booking_status = BookingStatus.WAITLISTED
 
+    # If a previous booking was cancelled, reuse that row
+    # instead of creating a duplicate row.
+    if existing_booking:
+        old_status = existing_booking.status
+
+        existing_booking.status = booking_status
+        existing_booking.booked_at = datetime.now()
+        existing_booking.updated_at = datetime.now()
+
+        add_history(
+            db=db,
+            booking=existing_booking,
+            event_type=BookingEventType.CREATED,
+            old_status=old_status,
+            new_status=booking_status,
+            user_id=user_id,
+            note="Booking reactivated",
+        )
+
+        db.commit()
+        db.refresh(existing_booking)
+
+        return existing_booking
+
+    # No previous booking exists, so create a new one.
     booking = Booking(
         session_id=session.id,
         member_id=member.id,
@@ -138,7 +169,6 @@ def create_booking(
     db.refresh(booking)
 
     return booking
-
 
 def cancel_booking(
     db: Session,
@@ -215,6 +245,88 @@ def cancel_booking(
                 user_id=user_id,
                 note="Automatically promoted from waitlist",
             )
+
+    db.commit()
+    db.refresh(booking)
+
+    return booking
+def mark_attendance(
+    db: Session,
+    booking_id,
+    attendance_status: BookingStatus,
+    user_id,
+) -> Booking:
+
+    # Lock the booking while changing attendance.
+    booking = (
+        db.query(Booking)
+        .filter(Booking.id == booking_id)
+        .with_for_update()
+        .first()
+    )
+
+    if not booking:
+        raise HTTPException(
+            status_code=404,
+            detail="Booking not found",
+        )
+
+    # Only BOOKED members can have attendance recorded.
+    if booking.status != BookingStatus.BOOKED:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Attendance can only be marked for a BOOKED booking"
+            ),
+        )
+
+    # Only ATTENDED or NO_SHOW are valid attendance states.
+    if attendance_status not in {
+        BookingStatus.ATTENDED,
+        BookingStatus.NO_SHOW,
+    }:
+        raise HTTPException(
+            status_code=400,
+            detail="Attendance status must be ATTENDED or NO_SHOW",
+        )
+
+    session = (
+        db.query(ClassSession)
+        .filter(ClassSession.id == booking.session_id)
+        .first()
+    )
+
+    if not session:
+        raise HTTPException(
+            status_code=404,
+            detail="Session not found",
+        )
+
+    session_start = datetime.combine(
+        session.session_date,
+        session.start_time,
+    )
+
+    if datetime.now() < session_start:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot mark attendance before the session has started",
+        )
+
+    old_status = booking.status
+
+    booking.status = attendance_status
+    booking.updated_at = datetime.now()
+
+    add_history(
+        db=db,
+        booking=booking,
+        event_type=BookingEventType.ATTENDANCE_MARKED,
+        old_status=old_status,
+        new_status=attendance_status,
+        user_id=user_id,
+        note=f"Attendance marked as {attendance_status.value}",
+    )
 
     db.commit()
     db.refresh(booking)
