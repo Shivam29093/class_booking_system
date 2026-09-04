@@ -1,10 +1,9 @@
 from datetime import datetime
 from uuid import UUID
-from app.models.enums import BookingEventType
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.enums import BookingStatus
+from app.models.enums import BookingEventType, BookingStatus
 
 
 class BookingCreate(BaseModel):
@@ -25,6 +24,7 @@ class BookingResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class BookingHistoryResponse(BaseModel):
     id: UUID
     booking_id: UUID
@@ -35,4 +35,11 @@ class BookingHistoryResponse(BaseModel):
     changed_by_user_id: UUID | None
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)    
+    model_config = ConfigDict(from_attributes=True)
+
+class BookingListResponse(BaseModel):
+    items: list[BookingResponse]
+    total: int
+    page: int
+    page_size: int
+    pages: int
