@@ -1,4 +1,4 @@
-const API = 'http://localhost:8000';
+const API = 'https://class-booking-system-p6dn.onrender.com';
 const state = { token: localStorage.getItem('busy-token'), user: null, view: 'dashboard', alertCount: 0 };
 const $ = (id) => document.getElementById(id);
 
