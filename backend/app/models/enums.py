@@ -34,3 +34,5 @@ class BookingEventType(str, Enum):
     PROMOTED = "PROMOTED"
 
     ATTENDANCE_MARKED = "ATTENDANCE_MARKED"
+
+    STAFF_NOTE = "STAFF_NOTE"

@@ -34,6 +34,11 @@ class Member(Base):
         nullable=False,
     )
 
+    expiry_alert_dismissed_for: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=datetime.utcnow,

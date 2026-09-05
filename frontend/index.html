@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BUSY Studio Operations</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="login-view" class="login-shell">
+    <form id="login-form" class="login-card">
+      <p class="eyebrow">BUSY STUDIO</p>
+      <h1>Class booking, without the scramble.</h1>
+      <p class="muted">Sign in to manage the floor, the roster, and every seat.</p>
+      <label>Email<input id="email" type="email" value="staff@busy.com" required></label>
+      <label>Password<input id="password" type="password" value="Staff@123" required></label>
+      <button class="primary" type="submit">Sign in</button>
+      <p id="login-error" class="error"></p>
+    </form>
+  </div>
+  <div id="app-view" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">B</span><span>BUSY</span></div>
+      <div id="user-role" class="role-label"></div>
+      <nav id="nav"></nav>
+      <button id="logout" class="ghost">Sign out</button>
+    </aside>
+    <main class="main-content">
+      <header class="topbar"><div><p class="eyebrow">STUDIO OPERATIONS</p><h2 id="page-title">Dashboard</h2></div><button id="refresh" class="icon-button" title="Refresh">↻</button></header>
+      <div id="alert-strip" class="alert-strip hidden"></div>
+      <section id="content"></section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

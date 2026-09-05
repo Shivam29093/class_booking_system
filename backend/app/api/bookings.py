@@ -6,6 +6,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
+    get_current_user,
     require_instructor_or_staff,
     require_staff,
 )
@@ -17,9 +18,10 @@ from app.models.instructor import Instructor
 from app.models.member import Member
 from app.models.session import ClassSession
 from app.models.user import User
-from app.models.enums import BookingStatus, UserRole
+from app.models.enums import BookingEventType, BookingStatus, UserRole
 from app.schemas.booking import (
     AttendanceUpdate,
+    BookingNoteCreate,
     BookingCreate,
     BookingHistoryResponse,
     BookingListResponse,
@@ -156,17 +158,19 @@ def list_bookings(
             query = query.order_by(
                 ClassSession.session_date.asc(),
                 ClassSession.start_time.asc(),
+                Booking.id.asc(),
             )
         else:
             query = query.order_by(
                 ClassSession.session_date.desc(),
                 ClassSession.start_time.desc(),
+                Booking.id.desc(),
             )
     else:
         if sort_order == "asc":
-            query = query.order_by(sort_column.asc())
+            query = query.order_by(sort_column.asc(), Booking.id.asc())
         else:
-            query = query.order_by(sort_column.desc())
+            query = query.order_by(sort_column.desc(), Booking.id.desc())
 
     # Pagination.
     offset = (page - 1) * page_size
@@ -263,11 +267,51 @@ def mark_attendance_endpoint(
     booking_id: UUID,
     payload: AttendanceUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_staff),
+    current_user: User = Depends(get_current_user),
 ):
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if current_user.role == UserRole.INSTRUCTOR:
+        instructor = current_user.instructor
+        if not instructor or not (
+            booking.session.primary_instructor_id == instructor.id
+            or any(item.id == instructor.id for item in booking.session.instructors)
+        ):
+            raise HTTPException(status_code=403, detail="You are not assigned to this session")
+    elif current_user.role != UserRole.STAFF:
+        raise HTTPException(status_code=403, detail="Staff or instructor access required")
     return mark_attendance(
         db=db,
         booking_id=booking_id,
         attendance_status=payload.status,
         user_id=current_user.id,
     )
+
+
+@router.post(
+    "/{booking_id}/history/notes",
+    response_model=BookingHistoryResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_booking_note(
+    booking_id: UUID,
+    payload: BookingNoteCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_staff),
+):
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    history = BookingHistory(
+        booking_id=booking.id,
+        event_type=BookingEventType.STAFF_NOTE,
+        note=payload.note.strip(),
+        changed_by_user_id=current_user.id,
+    )
+    db.add(history)
+    db.commit()
+    db.refresh(history)
+    return history

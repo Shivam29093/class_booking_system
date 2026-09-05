@@ -118,3 +118,7 @@ class ClassSession(Base):
     bookings: Mapped[list["Booking"]] = relationship(
         back_populates="session",
     )
+
+    @property
+    def co_instructor_ids(self) -> list[uuid.UUID]:
+        return [instructor.id for instructor in self.instructors]

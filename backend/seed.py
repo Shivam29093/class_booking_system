@@ -2,6 +2,7 @@ from app.core.database import SessionLocal
 from app.core.security import hash_password
 from app.models.enums import UserRole
 from app.models.user import User
+from app.models.instructor import Instructor
 
 
 def seed_users():
@@ -29,6 +30,16 @@ def seed_users():
             )
 
             if existing_user:
+                if (
+                    existing_user.role == UserRole.INSTRUCTOR
+                    and existing_user.instructor is None
+                ):
+                    db.add(
+                        Instructor(
+                            user_id=existing_user.id,
+                            name="Demo Instructor",
+                        )
+                    )
                 print(f"User already exists: {user_data['email']}")
                 continue
 
@@ -39,6 +50,10 @@ def seed_users():
             )
 
             db.add(user)
+            db.flush()
+
+            if user_data["role"] == UserRole.INSTRUCTOR:
+                db.add(Instructor(user_id=user.id, name="Demo Instructor"))
 
         db.commit()
         print("Demo users seeded successfully.")

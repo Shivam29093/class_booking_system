@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, String, Text, event
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,7 +20,7 @@ class BookingHistory(Base):
 
     booking_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("bookings.id", ondelete="CASCADE"),
+        ForeignKey("bookings.id"),
         nullable=False,
         index=True,
     )
@@ -63,3 +63,13 @@ class BookingHistory(Base):
     )
 
     changed_by: Mapped["User | None"] = relationship()
+
+
+@event.listens_for(BookingHistory, "before_update")
+def prevent_history_update(mapper, connection, target):
+    raise ValueError("Booking history is immutable")
+
+
+@event.listens_for(BookingHistory, "before_delete")
+def prevent_history_delete(mapper, connection, target):
+    raise ValueError("Booking history is immutable")

@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -8,7 +8,6 @@ from app.models.booking_history import BookingHistory
 from app.models.enums import BookingEventType, BookingStatus
 from app.models.member import Member
 from app.models.session import ClassSession
-from datetime import date, datetime, timedelta
 
 def add_history(
     db: Session,
@@ -29,6 +28,14 @@ def add_history(
     )
 
     db.add(history)
+
+
+def booking_event_for_status(status: BookingStatus) -> BookingEventType:
+    if status == BookingStatus.BOOKED:
+        return BookingEventType.CONFIRMED
+    if status == BookingStatus.WAITLISTED:
+        return BookingEventType.WAITLISTED
+    raise ValueError(f"Unsupported booking status: {status}")
 
 
 def create_booking(
@@ -133,7 +140,7 @@ def create_booking(
         add_history(
             db=db,
             booking=existing_booking,
-            event_type=BookingEventType.CREATED,
+            event_type=booking_event_for_status(booking_status),
             old_status=old_status,
             new_status=booking_status,
             user_id=user_id,
@@ -176,19 +183,22 @@ def cancel_booking(
     user_id,
 ) -> Booking:
 
-    # Lock the booking while changing its status.
+    # Lock the session first, matching create_booking's lock order.
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    session = (
+        db.query(ClassSession)
+        .filter(ClassSession.id == booking.session_id)
+        .with_for_update()
+        .first()
+    )
     booking = (
         db.query(Booking)
         .filter(Booking.id == booking_id)
         .with_for_update()
         .first()
     )
-
-    if not booking:
-        raise HTTPException(
-            status_code=404,
-            detail="Booking not found",
-        )
 
     if booking.status not in {
         BookingStatus.BOOKED,
@@ -235,6 +245,7 @@ def cancel_booking(
 
         if next_waitlisted:
             next_waitlisted.status = BookingStatus.BOOKED
+            next_waitlisted.updated_at = datetime.now()
 
             add_history(
                 db=db,
@@ -302,15 +313,15 @@ def mark_attendance(
             detail="Session not found",
         )
 
-    session_start = datetime.combine(
+    session_end = datetime.combine(
         session.session_date,
         session.start_time,
-    )
+    ) + timedelta(minutes=session.duration_minutes)
 
-    if datetime.now() < session_start:
+    if datetime.now() < session_end:
         raise HTTPException(
             status_code=400,
-            detail="Cannot mark attendance before the session has started",
+            detail="Cannot mark attendance before the session has ended",
         )
 
     old_status = booking.status

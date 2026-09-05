@@ -1,7 +1,7 @@
 from datetime import date, time
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SessionCreate(BaseModel):
@@ -32,6 +32,6 @@ class SessionResponse(BaseModel):
     room_id: UUID
     duration_minutes: int
     capacity: int
+    co_instructor_ids: list[UUID] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

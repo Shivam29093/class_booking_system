@@ -21,6 +21,7 @@ class MemberResponse(BaseModel):
     name: str
     email: str
     membership_expiry: date
+    expiry_alert_dismissed_for: date | None = None
 
     model_config = {
         "from_attributes": True

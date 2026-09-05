@@ -10,11 +10,15 @@ from app.api.dependencies import (
 from app.core.database import get_db
 from app.models.class_model import ClassModel
 from app.models.user import User
+from app.models.session import ClassSession
+from app.models.instructor import Instructor
+from sqlalchemy import or_
 from app.schemas.class_schema import (
     ClassCreate,
     ClassResponse,
     ClassUpdate,
 )
+from app.schemas.session import SessionResponse
 
 
 router = APIRouter(
@@ -177,3 +181,28 @@ def restore_class(
     db.refresh(class_model)
 
     return class_model
+
+
+@router.get(
+    "/{class_id}/sessions",
+    response_model=list[SessionResponse],
+)
+def list_class_sessions(
+    class_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not db.get(ClassModel, class_id):
+        raise HTTPException(status_code=404, detail="Class not found")
+    query = db.query(ClassSession).filter(ClassSession.class_id == class_id)
+    if current_user.role != "STAFF":
+        if not current_user.instructor:
+            return []
+        instructor_id = current_user.instructor.id
+        query = query.filter(
+            or_(
+                ClassSession.primary_instructor_id == instructor_id,
+                ClassSession.instructors.any(Instructor.id == instructor_id),
+            )
+        )
+    return query.order_by(ClassSession.session_date, ClassSession.start_time).all()

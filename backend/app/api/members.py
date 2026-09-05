@@ -111,6 +111,8 @@ def update_member(
         member.email = data.email
 
     if data.membership_expiry is not None:
+        if data.membership_expiry != member.membership_expiry:
+            member.expiry_alert_dismissed_for = None
         member.membership_expiry = data.membership_expiry
 
     db.commit()

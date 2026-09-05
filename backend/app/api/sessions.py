@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.dependencies import get_current_user, require_staff
 from app.models import (
+    Booking,
     ClassModel,
     ClassSession,
     Instructor,
@@ -429,6 +430,12 @@ def delete_session(
             detail="Session not found",
         )
 
+    if db.query(Booking).filter(Booking.session_id == session.id).first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Session cannot be deleted because it has booking history",
+        )
+
     db.delete(session)
     db.commit()
 
@@ -478,6 +485,16 @@ def add_co_instructor(
             status_code=409,
             detail="Instructor is already a co-instructor",
         )
+
+    validate_session_conflict(
+        db=db,
+        session_date=session.session_date,
+        start_time=session.start_time,
+        duration_minutes=session.duration_minutes,
+        room_id=session.room_id,
+        primary_instructor_id=instructor_id,
+        exclude_session_id=session.id,
+    )
 
     session.instructors.append(instructor)
 

@@ -33,6 +33,7 @@ Stores members who can book sessions.
 | name | VARCHAR | Required |
 | email | VARCHAR | Required |
 | membership_expiry | DATE | Required |
+| expiry_alert_dismissed_for | DATE | Nullable; expiry date for which the alert was dismissed |
 | created_at | TIMESTAMP | Required |
 | updated_at | TIMESTAMP | Required |
 
@@ -126,6 +127,10 @@ Append-only record of booking creation and status changes.
 | note | TEXT | Nullable |
 | changed_by_user_id | UUID | Foreign key to users |
 | created_at | TIMESTAMP | Required |
+
+History rows are append-only in the application ORM. Session deletion is
+rejected when bookings exist so booking timelines are not removed through the
+normal API.
 
 ## Relationships
 
